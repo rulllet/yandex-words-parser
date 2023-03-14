@@ -2,6 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException
 import time
 import json
 import configparser
@@ -12,22 +13,25 @@ import logging
 driver = webdriver.Chrome()
 driver.maximize_window()
 
+
 logging.basicConfig(level=logging.INFO, filename="logs.log",
     format="%(asctime)s %(levelname)s %(message)s", datefmt='%m.%d.%Y %H:%M:%S', encoding='utf-8')
 
 
 def log(result_log, value=None):
-    if result_log == 'login_yandex_pasport_result_is_bad':
+    if result_log == 'login_yandex_pasport_result_is_good':
+        logging.warning(f"login = '{value}' выполнен вход")
+    elif result_log == 'login_yandex_pasport_result_is_bad':
         logging.warning(f"login = '{value}' неудалось войти под пользователем")
-    if result_log == 'authentication_check_result_is_bad':
+    elif result_log == 'authentication_check_result_is_bad':
         logging.warning(f"Аккаунт не прошел проверку на аунтификацию wordstat.yandex")
-    if result_log == 'save_result_is_good':
+    elif result_log == 'save_result_is_good':
         logging.info(f"Статистика '{value}' записана успешно")
-    if result_log == 'save_result_is_bag':    
+    elif result_log == 'save_result_is_bag':    
         logging.warning(f"Слово '{value}' не сохраненно, неивестная ошибка")
-    if  result_log == 'login_yandex_pasport_result_captcha':
+    elif  result_log == 'login_yandex_pasport_result_captcha':
         logging.warning(f"login = {value} найдена капча")
-    if  result_log == 'login_yandex_pasport_result_bad_password':
+    elif  result_log == 'login_yandex_pasport_result_bad_password':
         logging.warning(f"login = {value} неверный пароль")
 
 
@@ -56,13 +60,16 @@ def authentication_wordstat_yandex():
     # функция проверяет аунтификацию на wordstat.yandex.ru
     try:
         authentication_check = driver.find_element(By.XPATH, "//td[@class='b-head-userinfo__exit']")
-        return authentication_check.text == 'Выход'
-    except:
+        authentication_check = authentication_check.text == 'Выход'
+        if authentication_check == True: 
+            return True
+    except NoSuchElementException:
         log('authentication_check_result_is_bad')
         return False
     
     
 def authentication_passport_yandex():
+    # функция проверяет аунтификацию на passport.yandex.ru
     if 'https://id.yandex.ru/' in driver.current_url:
         return True
     else:
@@ -162,6 +169,7 @@ def save_result(word, result):
 def service(words, account_data):
     login = login_yandex_pasport(account_data)      
     if login == True:
+        log('login_yandex_pasport_result_is_good', account_data['login'])
         for word in words:
             result = search_wordstat(word)
             save_result(word, result)     
